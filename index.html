@@ -3,97 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<!-- 加到主屏幕后全屏显示 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>倒计时</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,"PingFang SC",system-ui,sans-serif}
-body{
-  background:#fff;
-  color:#222;
-  min-height:100vh;
-  display:flex;
-  flex-direction:column;
-}
-
-/* 顶部蓝色栏：平直，无圆角 */
-.top-bar{
-  background:#1e88e5;
-  height:64px;
-  display:flex;
-  align-items:center;
-  padding:0 20px;
-}
-
-/* 时间：直接铺在白底，去掉白色盒子 */
-.time-wrap{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:12px;
-  padding:44px 0 36px;
-}
-.time-box input{
-  width:80px;
-  padding:4px 0;
-  font-size:56px;
-  font-weight:700;
-  text-align:center;
-  border:none;
-  outline:none;
-  background:transparent;
-  color:#222;
-  font-variant-numeric:tabular-nums;
-}
+body{background:#fff;color:#222;min-height:100vh;display:flex;flex-direction:column;}
+.top-bar{background:#1e88e5;height:64px;display:flex;align-items:center;padding:0 20px;}
+.time-wrap{display:flex;align-items:center;justify-content:center;gap:12px;padding:44px 0 36px;}
+.time-box input{width:80px;padding:4px 0;font-size:56px;font-weight:700;text-align:center;border:none;outline:none;background:transparent;color:#222;font-variant-numeric:tabular-nums;}
 .colon{font-size:52px;font-weight:700;color:#b0bec5;line-height:1;padding-top:8px}
-
-/* 快捷图标：只留圆图标，不要汉字标签，一行横排 */
-.quick-row{
-  display:flex;
-  gap:26px;
-  justify-content:center;
-  flex-wrap:wrap;
-  padding:10px 0 20px;
-}
-.quick-item{
-  width:56px;height:56px;border-radius:50%;
-  background:#e8f1fb;
-  color:#1e88e5;
-  display:flex;align-items:center;justify-content:center;
-  font-size:20px;font-weight:700;
-  cursor:pointer;
-}
+.quick-row{display:flex;gap:26px;justify-content:center;flex-wrap:wrap;padding:10px 0 20px;}
+.quick-item{width:56px;height:56px;border-radius:50%;background:#e8f1fb;color:#1e88e5;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;cursor:pointer;}
 .quick-item:active{background:#d6e7f8}
-
-/* 底部控制：两个圆钮靠右放 */
-.ctrl-row{
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:22px;
-  padding:24px 24px 0;
-}
-.play-btn{
-  width:64px;height:64px;border-radius:50%;
-  background:#1e88e5;color:#fff;border:1px solid #e0e0e0;
-  font-size:22px;display:flex;align-items:center;justify-content:center;
-  cursor:pointer;box-shadow:0 4px 12px rgba(30,136,229,.3);
-  transition:transform .12s;
-}
+.ctrl-row{display:flex;align-items:center;justify-content:flex-end;gap:22px;padding:24px 24px 0;}
+.play-btn{width:64px;height:64px;border-radius:50%;background:#1e88e5;color:#fff;border:1px solid #e0e0e0;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(30,136,229,.3);transition:transform .12s;}
 .play-btn:active{transform:scale(.94)}
-.reset-btn{
-  width:50px;height:50px;border-radius:50%;
-  background:#fff;color:#64748b;border:1px solid #e0e0e0;font-size:20px;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;
-}
+.reset-btn{width:50px;height:50px;border-radius:50%;background:#fff;color:#64748b;border:1px solid #e0e0e0;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .reset-btn:active{background:#f0f0f0}
-
-@media (max-width:380px){
-  .time-box input{width:64px;font-size:46px}
-  .colon{font-size:46px}
-  .quick-row{gap:18px}
-}
+@media (max-width:380px){.time-box input{width:64px;font-size:46px}.colon{font-size:46px}.quick-row{gap:18px}}
 </style>
 </head>
 <body>
@@ -137,8 +65,34 @@ const sEl = document.getElementById('s');
 const playBtn = document.getElementById('playBtn');
 
 let audioCtx = null;
+
+// 【修改点1：加入苹果专属的音频解锁代码】
+// 只要手指碰一下屏幕，就把音频引擎唤醒
+document.body.addEventListener('touchstart', function() {
+    if (!audioCtx) {
+        try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            // 创建一个无声的节点激活它
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            gain.gain.value = 0; 
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(0);
+            osc.stop(audioCtx.currentTime + 0.01);
+        } catch(e) {}
+    }
+    // 如果在后台休眠了，点屏幕重新唤醒
+    if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}, { once: true }); // 只需要第一次点击解锁
+
 function beep(){
   try{
+    if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume(); // 确保发声前引擎是唤醒的
+    }
     audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
     const t = audioCtx.currentTime;
     const notes = [523, 659, 784];
@@ -209,7 +163,8 @@ function tick(){
     isRun = false;
     playBtn.innerText = '▶';
     beep();
-    // 已去掉“时间到！”弹窗，只响提示音
+    // 【修改点2：加上了震动提醒，虽然可能不起作用，但聊胜于无】
+    if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
   }
 }
 
